@@ -259,12 +259,12 @@ void test_motor()
 		wait_ms(2000);
 		sensors_stop_sampling_flow();
 		motor_stop();
+		nb_steps = motor_release();
+		while(!_home) {};
 		valve_exhale();
 		print_samples_P(samples_P, samples_P_dt_us, get_samples_P_index_size());
 		//print_samples_Q(samples_Q_Lps, samples_Q_Lps_dt_us, get_samples_Q_index_size());
 		//print_steps(steps_press_t_us, nb_steps);
-		nb_steps = motor_release();
-		while(!_home) {};
 		wait_ms(2000);
 	}
 }
