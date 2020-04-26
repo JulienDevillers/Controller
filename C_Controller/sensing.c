@@ -16,7 +16,8 @@
 
 static uint32_t last_sense_ms = 0;
 
-uint16_t steps_t_us[MOTOR_MAX];
+uint16_t steps_release_t_us[MOTOR_MAX];
+uint16_t steps_press_t_us[MOTOR_MAX];
 uint16_t last_step = 0;
 // Updated by sensors.c
 
@@ -230,33 +231,9 @@ uint32_t compute_samples_average_and_latency_us()
     return latency_us;
 }
 
-uint16_t motor_press_constant(uint16_t step_t_us, uint16_t nb_steps)
-{
-    const uint16_t max_steps = MIN(nb_steps, COUNT_OF(steps_t_us));
-    for(unsigned int i = 0; i < COUNT_OF(steps_t_us); i++)
-    {
-        if(i < max_steps) {
-		steps_t_us[i] = MAX(step_t_us, MOTOR_STEP_TIME_INIT - (A)*i);
-        }
-        else {
-		steps_t_us[i] = MIN(UINT16_MAX, step_t_us + (A)*(i-max_steps));
-        }
-    }
-    motor_press(steps_t_us, max_steps);
-    return max_steps;
-}
-
-uint16_t compute_constant_motor_steps(uint16_t step_t_us, uint16_t nb_steps)
-{
-    const uint16_t max_steps = MIN(nb_steps, COUNT_OF(steps_t_us));
-    for(unsigned int t=0; t<max_steps; ++t) { steps_t_us[t]= step_t_us; }
-    motor_press(steps_t_us, nb_steps);
-    return max_steps;
-}
-
 float corrections[MOTOR_MAX];
 //! \returns last steps_t_us motion to reach vol_mL
-uint32_t compute_motor_steps_and_Tinsu_ms(float desired_flow_Lps, float vol_mL)
+uint32_t compute_motor_steps_and_Tinsu_ms(float desired_flow_Lps, float vol_mL, uint16_t* steps_t_us)
 {
     uint32_t latency_us = compute_samples_average_and_latency_us(); // removes Pdiff noise and moderates flow adjustments over cycles
 //	sprintf(buf, "latency : %d\n", latency_us);
@@ -266,7 +243,7 @@ uint32_t compute_motor_steps_and_Tinsu_ms(float desired_flow_Lps, float vol_mL)
 
     uint32_t last_step = 0;
     float Tinsu_us = 0.f;
-    for (uint16_t i=0 ; i<COUNT_OF(steps_t_us) ; ++i) {
+    for (uint16_t i=0 ; i< MOTOR_MAX ; ++i) {
         uint16_t Q_index = (Tinsu_us + latency_us) / SAMPLES_T_US;
         const uint16_t average_Q_index = MIN(get_samples_Q_index_size()-(1+CALIB_PDIFF_SAMPLES_MIN/2),Q_index);
 //		if(i % 100 == 0) {
@@ -349,8 +326,8 @@ bool PRINT(test_compute_samples_average_and_latency_us)
 
 bool PRINT(test_compute_motor_steps_and_Tinsu_ms)
     TEST_ASSUME(flow_samples());
-    TEST_ASSUME(compute_constant_motor_steps(1000, UINT16_MAX)==MOTOR_MAX);
-    uint32_t last_step = compute_motor_steps_and_Tinsu_ms(1.5f, 230.f);
+    TEST_ASSUME(compute_constant_motor_steps(1000, UINT16_MAX, steps_press_t_us)==MOTOR_MAX);
+    uint32_t last_step = compute_motor_steps_and_Tinsu_ms(1.5f, 230.f, steps_press_t_us);
     return TEST_EQUALS(309, last_step); // TODO Check with more accurate calibration
 }
 

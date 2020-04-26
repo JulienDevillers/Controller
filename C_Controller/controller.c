@@ -260,7 +260,7 @@ void enter_state(RespirationState new)
 
         valve_inhale();
 		if(last_step != 0) {
-            motor_press(steps_t_us, last_step);
+            motor_press(steps_press_t_us, last_step);
 		}
 		else {
 			motor_press_constant(MOTOR_STEP_TIME_US_MIN*(60.f / get_setting_Vmax_Lpm()) , 6*get_setting_VT_mL());
@@ -279,7 +279,7 @@ void enter_state(RespirationState new)
         motor_release();
 		VMe_Lpm = 0.f;
 		PEP_cmH2O = 0.f;
-		//last_step = compute_motor_steps_and_Tinsu_ms(get_setting_Vmax_Lpm()/60.f, get_setting_VT_mL());
+		last_step = compute_motor_steps_and_Tinsu_ms(get_setting_Vmax_Lpm()/60.f, get_setting_VT_mL(), steps_press_t_us);
 	}
 	else if(state==ExhalationPause) {
         valve_inhale();

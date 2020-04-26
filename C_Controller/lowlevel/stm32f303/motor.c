@@ -3,6 +3,8 @@
 #include "sensing.h"
 #include "ihm_communication.h"
 #include "hardware_serial.h"
+#include "stm32f3xx_hal.h"
+#include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -19,38 +21,79 @@ static volatile bool _active;
 
 static void check_home() ;
 static void motor_enable(bool ena);
-bool motor_release() {
-  if( !_home) {
-	  motor_stop();
-	  HAL_GPIO_WritePin(MOTOR_DIR_GPIO_Port, MOTOR_DIR_Pin, MOTOR_RELEASE_DIR);
-	  _moving=true;
-	  _homing=true;
-	  _motor_tim->Instance->ARR = MOTOR_RELEASE_STEP_US;
-	  HAL_TIM_PWM_Start(_motor_tim, MOTOR_TIM_CHANNEL);
-  }
-  return true;
+
+
+uint16_t compute_motor_press_constant(uint16_t step_t_us, uint16_t nb_steps, uint16_t* steps_t_us)
+{
+	const uint16_t max_steps = MIN(nb_steps, MOTOR_MAX);
+	const uint16_t deceleration_step = 100;
+	for(unsigned int i = 0; i < max_steps; i++)
+	{
+		//Acceleration phase
+		if(i < max_steps) {
+			steps_t_us[i] = MAX(step_t_us, MOTOR_STEP_TIME_INIT - (A)*i);
+		}
+		//Deceleration phase
+		else if(max_steps > deceleration_step && i < max_steps-deceleration_step) {
+			steps_t_us[i] = MAX(step_t_us, step_t_us + (A)*(max_steps-i));
+		}
+		else {
+			steps_t_us[i] = UINT16_MAX;
+		}
+	}
+	return max_steps;
 }
 
-static char buf[200];
-bool motor_press(uint16_t* steps_profile_us, uint16_t nb_steps)
+int motor_press_dir(uint16_t* steps_profile_us, uint16_t nb_steps, int direction)
 {
     motor_stop();
-	//for(int i =0; i < nb_steps;i+=100)
-	//{
-	//	sprintf(buf, "step [ %d]  : %d\n", i, steps_profile_us[i]);
-	//	hardware_serial_write_data(buf, strlen(buf)); 
-	//}
-    if (nb_steps > 0) {
-        HAL_GPIO_WritePin(MOTOR_DIR_GPIO_Port, MOTOR_DIR_Pin, MOTOR_PRESS_DIR);
-        _moving=true;
-        _motor_tim->Instance->ARR = steps_profile_us[0];
-        HAL_TIM_PWM_Start(_motor_tim, MOTOR_TIM_CHANNEL);
-        HAL_TIM_DMABurst_MultiWriteStart(_motor_tim, TIM_DMABASE_ARR, TIM_DMA_UPDATE,	(uint32_t*)&steps_profile_us[1], TIM_DMABURSTLENGTH_1TRANSFER, nb_steps-1);
-    }
-    return true;
+	if (nb_steps > 0) {
+		HAL_GPIO_WritePin(MOTOR_DIR_GPIO_Port, MOTOR_DIR_Pin, direction);
+		if(direction == MOTOR_RELEASE_DIR) {
+			light_green(On);
+			light_red(Off);
+		}
+		else {
+			light_green(Off);
+			light_red(On);
+		}
+		_moving=true;
+		_motor_tim->Instance->ARR = steps_profile_us[0];
+		HAL_TIM_PWM_Start(_motor_tim, MOTOR_TIM_CHANNEL);
+		if(direction == MOTOR_PRESS_DIR)
+			HAL_TIM_DMABurst_MultiWriteStart(_motor_tim, TIM_DMABASE_ARR, TIM_DMA_UPDATE,  (uint32_t*)&steps_profile_us[1], TIM_DMABURSTLENGTH_1TRANSFER, nb_steps-1);
+	}
+    return nb_steps;
 }
 
-bool motor_stop() {
+int motor_press(uint16_t* steps_profile_us, uint16_t nb_steps)
+{
+  return motor_press_dir(steps_profile_us, nb_steps, MOTOR_PRESS_DIR);
+}
+
+
+
+int motor_release() {
+  int nb_steps = 0;
+  if(!_home) {
+    motor_stop();
+    nb_steps = compute_motor_press_constant(300, MOTOR_MAX, steps_release_t_us);
+    _moving=true;
+    _homing=true;
+    motor_press_dir(steps_release_t_us, nb_steps, MOTOR_RELEASE_DIR);
+  }
+  return nb_steps;
+}
+
+uint16_t motor_press_constant(uint16_t step_t_us, uint16_t nb_steps)
+{
+	uint16_t max_steps = compute_motor_press_constant(step_t_us, nb_steps, steps_press_t_us);
+    motor_press(steps_press_t_us, max_steps);
+    return max_steps;
+}
+
+bool motor_stop() 
+{
   HAL_TIM_PWM_Stop(_motor_tim, MOTOR_TIM_CHANNEL);
   HAL_TIM_DMABurst_WriteStop(_motor_tim, TIM_DMA_ID_UPDATE);
   _moving=false;
@@ -106,7 +149,6 @@ void motor_limit_sw_A_irq() {
   uint32_t time= HAL_GetTick();
   if(time-last_time>100) {
     _limit_sw_A= ! HAL_GPIO_ReadPin(MOTOR_LIMIT_SW_A_GPIO_Port, MOTOR_LIMIT_SW_A_Pin);
-//	  _limit_sw_A ? light_yellow(On) : light_yellow(Off);
     check_home();
   }
   last_time=time;
@@ -117,7 +159,6 @@ void motor_limit_sw_B_irq() {
   uint32_t time= HAL_GetTick();
   if(time-last_time>100) {
     _limit_sw_B= ! HAL_GPIO_ReadPin(MOTOR_LIMIT_SW_B_GPIO_Port, MOTOR_LIMIT_SW_B_Pin);
-//  	_limit_sw_B ? light_green(On) : light_green(Off);
     check_home();
   }
   last_time=time;
@@ -149,42 +190,52 @@ static void motor_enable(bool ena) {
 	HAL_GPIO_WritePin(MOTOR_ENA_GPIO_Port, MOTOR_ENA_Pin, ena?GPIO_PIN_SET:GPIO_PIN_RESET);
 }
 
+static void print_samples(float* samples_Q_Lps, int nb_samples)
+{
+	static char msg[200];
+	strcpy(msg, "\nSample");
+	hardware_serial_write_data(msg, strlen(msg)); 
+	msg[0] = '\n';
+	for(unsigned int j=0; j < nb_samples; j++)
+	{
+		itoa( (int) (samples_Q_Lps[j] * 1000.0f), msg+1, 10);
+		hardware_serial_write_data(msg, strlen(msg)); 
+		wait_ms(1);
+	}
 
+}
+static void print_steps(uint16_t* steps_t_us, unsigned int nb_steps)
+{
+	static char msg[200];
+	strcpy(msg, "\nSteps                ");
+	itoa( nb_steps , msg+6, 10);
+	hardware_serial_write_data(msg, strlen(msg)); 
+	msg[0] = '\n';
+	for(unsigned int j=0; j < nb_steps; j+=100)
+	{
+		itoa((int) steps_t_us[j], msg+1, 10);
+		hardware_serial_write_data(msg, strlen(msg)); 
+		wait_ms(1);
+	}
+}
 
 void test_motor() 
 {
-	static char msg[200];
-	for(int i = 1; i < 4; i++) 
+	int nb_steps;
+	for(int i = 1; i <= 2; i++) 
 	{
 		valve_inhale();
 		sensors_start_sampling_flow();
-		motor_press_constant(MOTOR_STEP_TIME_US_MIN*i, 3800);
-		sensors_start_sampling_flow();
-		wait_ms(2000);
+		nb_steps = motor_press_constant(400, 4000);
+		wait_ms(5000);
 		motor_stop();
+		print_steps(steps_press_t_us, nb_steps);
 		valve_exhale();
 		wait_ms(100);
 		sensors_stop_sampling_flow();
-		motor_release();
-		strcpy(msg, "\nSample");
-		hardware_serial_write_data(msg, strlen(msg)); 
-		msg[0] = '\n';
-		for(unsigned int j=0; j < COUNT_OF(samples_Q_Lps); j++)
-		{
-			itoa( (int) (samples_Q_Lps[j] * 1000.0f), msg+1, 10);
-			hardware_serial_write_data(msg, strlen(msg)); 
-			wait_ms(1);
-		}
-
-		strcpy(msg, "\nSteps");
-		hardware_serial_write_data(msg, strlen(msg)); 
-		msg[0] = '\n';
-		for(unsigned int j=0; j < COUNT_OF(steps_t_us); j++)
-		{
-			itoa((int) steps_t_us[j], msg+1, 10);
-			hardware_serial_write_data(msg, strlen(msg)); 
-			wait_ms(1);
-		}
+		nb_steps = motor_release();
+		while(!_home) {};
+		print_steps(steps_release_t_us, nb_steps);
 		wait_ms(2000);
 	}
 }
