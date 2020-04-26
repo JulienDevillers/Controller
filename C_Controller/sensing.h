@@ -46,14 +46,15 @@ extern  uint16_t steps_release_t_us[MOTOR_MAX];
 extern  uint16_t steps_press_t_us[MOTOR_MAX];
 extern  uint16_t last_step;
 
-#define SAMPLING_SIZE	(300)
+#define Q_SAMPLING_SIZE	(300)
+#define P_SAMPLING_SIZE	(300)
 
-extern float samples_Q_Lps[SAMPLING_SIZE]; // > max Tinsu_ms
-extern uint16_t samples_Q_Lps_dt_us[SAMPLING_SIZE];
-extern float average_Q_Lps[SAMPLING_SIZE]; // > max Tinsu_ms
+extern float samples_Q_Lps[Q_SAMPLING_SIZE]; // > max Tinsu_ms
+extern uint16_t samples_Q_Lps_dt_us[Q_SAMPLING_SIZE];
+extern float average_Q_Lps[Q_SAMPLING_SIZE]; // > max Tinsu_ms
 
-extern uint16_t samples_P[SAMPLING_SIZE];
-extern uint16_t samples_P_dt_us[SAMPLING_SIZE];
+extern uint16_t samples_P[P_SAMPLING_SIZE];
+extern uint16_t samples_P_dt_us[P_SAMPLING_SIZE];
 
 
 #ifndef NTESTS

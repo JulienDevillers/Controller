@@ -311,7 +311,7 @@ void enter_state(RespirationState new)
 //#endif
 
 extern float corrections[MOTOR_MAX];
-extern float average_Q_Lps[SAMPLING_SIZE];
+extern float average_Q_Lps[Q_SAMPLING_SIZE];
 
 void cycle_respiration()
 {

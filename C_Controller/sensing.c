@@ -30,8 +30,8 @@ static volatile uint16_t raw_P     = 0.f;
 static volatile int16_t raw_VolM  = 0.f;
 static volatile uint32_t raw_dt_us = 0.f;
 
-uint16_t samples_P[SAMPLING_SIZE]; 
-uint16_t samples_P_dt_us[SAMPLING_SIZE];
+uint16_t samples_P[P_SAMPLING_SIZE]; 
+uint16_t samples_P_dt_us[P_SAMPLING_SIZE];
 
 static volatile float    samples_P_t_us  = 0.f;
 static volatile uint16_t samples_P_index = 0;
@@ -42,8 +42,8 @@ static volatile float    samples_Q_t_us  = 0.f;
 static volatile uint16_t samples_Q_index = 0;
 static volatile bool     sampling_Q      = false;
 
-float samples_Q_Lps[SAMPLING_SIZE]; // > max Tinsu_ms
-uint16_t samples_Q_Lps_dt_us[SAMPLING_SIZE]; // > max Tinsu_ms
+float samples_Q_Lps[Q_SAMPLING_SIZE]; // > max Tinsu_ms
+uint16_t samples_Q_Lps_dt_us[Q_SAMPLING_SIZE]; // > max Tinsu_ms
 //float average_Q_Lps[SAMPLING_SIZE]; // > max Tinsu_ms
 
 // ------------------------------------------------------------------------------------------------
@@ -113,7 +113,7 @@ bool sensors_sample_P(uint16_t read, uint16_t dt_us)
 	compute_corrected_pressure();
 	if (!sampling_P) return false;
 
-	if(samples_P_index < SAMPLING_SIZE) {
+	if(samples_P_index < P_SAMPLING_SIZE) {
 		samples_P[samples_P_index] = read;
 		samples_P_dt_us[samples_P_index]  = dt_us;
 		samples_P_t_us  += dt_us;
@@ -174,7 +174,7 @@ bool sensors_sample_flow(int16_t read, uint16_t dt_us)
 
 	if (!sampling_Q) return false;
 
-	if(samples_Q_index < SAMPLING_SIZE) {
+	if(samples_Q_index < Q_SAMPLING_SIZE) {
 		samples_Q_Lps[samples_Q_index] = current_VolM_Lpm / 60.0f;
 		samples_Q_Lps_dt_us[samples_Q_index]  = dt_us;
 		samples_Q_t_us  += dt_us;
