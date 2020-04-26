@@ -265,6 +265,7 @@ void test_motor()
 		sensors_stop_sampling_flow();
 		motor_stop();
 		nb_steps = motor_release();
+		wait_ms(10);
 		while(!_home) {};
 		valve_exhale();
 		print_samples_P(samples_P, samples_P_dt_us, get_samples_P_index_size());
