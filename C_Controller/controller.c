@@ -102,18 +102,18 @@ int self_tests()
     check(&test_bits, 3, init_valve());
     check(&test_bits, 3, valve_exhale());
 
-    check(&test_bits, 4, init_motor());
-    printf("Exhale  Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
-    check(&test_bits, 4, motor_release());
-    wait_ms(3000);
-    check(&test_bits, 4, motor_stop());
-    printf("Release Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
-    check(&test_bits, 3, valve_inhale());
-    printf("Inhale  Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
+    //check(&test_bits, 4, init_motor());
+    //printf("Exhale  Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
+    //check(&test_bits, 4, motor_release());
+    //wait_ms(3000);
+    //check(&test_bits, 4, motor_stop());
+    //printf("Release Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
+    //check(&test_bits, 3, valve_inhale());
+    //printf("Inhale  Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
 
-	test_motor();
 	while(true)
 	{
+		test_motor();
 	}
 
     motor_press_constant(400, 1000);

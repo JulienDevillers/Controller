@@ -29,17 +29,18 @@ uint16_t compute_motor_press_constant(uint16_t step_t_us, uint16_t nb_steps, uin
 	const uint16_t deceleration_step = 100;
 	for(unsigned int i = 0; i < max_steps; i++)
 	{
-		//Acceleration phase
-		if(i < max_steps) {
-			steps_t_us[i] = MAX(step_t_us, MOTOR_STEP_TIME_INIT - (A)*i);
-		}
-		//Deceleration phase
-		else if(max_steps > deceleration_step && i < max_steps-deceleration_step) {
-			steps_t_us[i] = MAX(step_t_us, step_t_us + (A)*(max_steps-i));
-		}
-		else {
-			steps_t_us[i] = UINT16_MAX;
-		}
+		steps_t_us[i] = step_t_us;
+		////Acceleration phase
+		//if(i < max_steps) {
+		//	steps_t_us[i] = MAX(step_t_us, MOTOR_STEP_TIME_INIT - (A)*i);
+		//}
+		////Deceleration phase
+		//else if(max_steps > deceleration_step && i < max_steps-deceleration_step) {
+		//	steps_t_us[i] = MAX(step_t_us, step_t_us + (A)*(max_steps-i));
+		//}
+		//else {
+		//	steps_t_us[i] = UINT16_MAX;
+		//}
 	}
 	return max_steps;
 }
@@ -222,20 +223,18 @@ static void print_steps(uint16_t* steps_t_us, unsigned int nb_steps)
 void test_motor() 
 {
 	int nb_steps;
-	for(int i = 1; i <= 2; i++) 
+	while(true) 
 	{
+		motor_stop();
 		valve_inhale();
 		sensors_start_sampling_flow();
 		nb_steps = motor_press_constant(400, 4000);
-		wait_ms(5000);
-		motor_stop();
-		print_steps(steps_press_t_us, nb_steps);
-		valve_exhale();
-		wait_ms(100);
+		wait_ms(2000);
 		sensors_stop_sampling_flow();
+		valve_exhale();
+		print_steps(steps_press_t_us, nb_steps);
 		nb_steps = motor_release();
 		while(!_home) {};
-		print_steps(steps_release_t_us, nb_steps);
 		wait_ms(2000);
 	}
 }

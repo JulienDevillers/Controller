@@ -149,7 +149,7 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 
 	case READ_SDP_MEASUREMENT:
 		if (HAL_I2C_GetError(hi2c) == HAL_I2C_ERROR_AF) {
-			_sensor_state= READ_NPA_MEASUREMENT;
+			_sensor_state= READ_SDP_MEASUREMENT/*READ_NPA_MEASUREMENT*/;
 			HAL_I2C_Master_Receive_DMA(hi2c, ADDR_NPA700B , (uint8_t*) _npa_measurement_buffer, sizeof(_npa_measurement_buffer) );
 			break;
 		}
