@@ -128,7 +128,7 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 				else {
 					npa_dt_us = npa_t_us - last_npa_t_us;
 				}
-				if(npa_dt_us > 1000)
+				if(npa_dt_us > 4800)
 				{
                 	sensors_sample_P(praw, npa_dt_us); // Pressure (Paw) sensor is assumed to provide responses @ 1kHz
 					last_npa_t_us = npa_t_us;
@@ -178,12 +178,12 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 			else {
 				sdp_dt_us = sdp_t_us - last_sdp_t_us;
 			}
-			last_sdp_t_us = sdp_t_us;
 
 			int16_t uncorrected_flow = (int16_t)((((uint16_t)_sdp_measurement_buffer[0]) << 8)
 					| (uint8_t )_sdp_measurement_buffer[1]);
 
 			sensors_sample_flow(uncorrected_flow, sdp_dt_us); // Flow (Pdiff) sensor is assumed to provide responses @ 200Hz
+			last_sdp_t_us = sdp_t_us;
 			_sensor_state= REQ_SDP_MEASUREMENT;
 			HAL_I2C_Master_Transmit_IT(hi2c, ADDR_SPD610, (uint8_t*) _sdp_measurement_req, sizeof(_sdp_measurement_req) );
         }

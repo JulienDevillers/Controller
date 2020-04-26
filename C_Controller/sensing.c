@@ -229,7 +229,7 @@ uint32_t compute_samples_average_and_latency_us()
                 unusable_samples = false;
             }
             else {
-                latency_us += SAMPLES_T_US;
+                latency_us += samples_Q_Lps_dt_us[i];
             }
         }
         // Sliding average over CALIB_PDIFF_SAMPLES_MIN samples at same index
