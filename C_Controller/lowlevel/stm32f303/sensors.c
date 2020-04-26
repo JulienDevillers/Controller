@@ -129,7 +129,7 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 					npa_dt_us = npa_t_us - last_npa_t_us;
 				}
 				last_npa_t_us = npa_t_us;
-                sensors_sample_P(praw, npa_t_us); // Pressure (Paw) sensor is assumed to provide responses @ 1kHz
+                sensors_sample_P(praw, npa_dt_us); // Pressure (Paw) sensor is assumed to provide responses @ 1kHz
             }
             else if((_npa_measurement_buffer[0]>>6)==3) {
 				// TODO: Manage error status !!
