@@ -262,7 +262,6 @@ void test_motor()
 		wait_ms(600);
 		valve_exhale();
 		wait_ms(600);
-
 		sensors_stop_sampling_flow();
 		motor_stop();
 		nb_steps = motor_release();
