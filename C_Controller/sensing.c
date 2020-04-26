@@ -30,13 +30,21 @@ static volatile uint16_t raw_P     = 0.f;
 static volatile int16_t raw_VolM  = 0.f;
 static volatile uint32_t raw_dt_us = 0.f;
 
+uint16_t samples_P[SAMPLING_SIZE]; 
+uint16_t samples_P_dt_us[SAMPLING_SIZE];
+
+static volatile float    samples_P_t_us  = 0.f;
+static volatile uint16_t samples_P_index = 0;
+static volatile bool     sampling_P      = false;
+
+
 static volatile float    samples_Q_t_us  = 0.f;
 static volatile uint16_t samples_Q_index = 0;
 static volatile bool     sampling_Q      = false;
 
 float samples_Q_Lps[SAMPLING_SIZE]; // > max Tinsu_ms
 uint16_t samples_Q_Lps_dt_us[SAMPLING_SIZE]; // > max Tinsu_ms
-float average_Q_Lps[SAMPLING_SIZE]; // > max Tinsu_ms
+//float average_Q_Lps[SAMPLING_SIZE]; // > max Tinsu_ms
 
 // ------------------------------------------------------------------------------------------------
 
@@ -83,6 +91,7 @@ float get_sensed_P_cmH2O()
 float get_last_sensed_ms() { return last_sense_ms; }
 
 uint16_t get_samples_Q_index_size() { return samples_Q_index; }
+uint16_t get_samples_P_index_size() { return samples_P_index; }
 
 //! \returns the atmospheric pressure in mbar
 //! \warning NOT IMPLEMENTED
@@ -97,11 +106,20 @@ float get_sensed_Patmo_mbar()
 
 // ------------------------------------------------------------------------------------------------
 
-void sensors_sample_P(uint16_t read, uint16_t dt_us)
+bool sensors_sample_P(uint16_t read, uint16_t dt_us)
 {
 	UNUSED(dt_us);
     raw_P = read;
 	compute_corrected_pressure();
+	if (!sampling_P) return false;
+
+	if(samples_P_index < SAMPLING_SIZE) {
+		samples_P[samples_P_index] = read;
+		samples_P_dt_us[samples_P_index]  = dt_us;
+		samples_P_t_us  += dt_us;
+		samples_P_index++ ;
+	}
+	return true;
 }
 
 void compute_corrected_pressure()
@@ -139,7 +157,10 @@ bool sensors_start_sampling_flow()
     samples_Q_t_us = 0.f;
     samples_Q_index = 0;
     sampling_Q = true;
-	light_green(On);
+
+    samples_P_t_us = 0.f;
+    samples_P_index = 0;
+    sampling_P = true;
 
     return sampling_Q;
 }
