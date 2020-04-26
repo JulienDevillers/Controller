@@ -3,6 +3,7 @@
 #include "lowlevel.h"
 
 #include "sensing.h"
+#include <stdint.h>
 
 typedef enum {
 	STOPPED,
@@ -88,14 +89,16 @@ bool is_sensors_ok() {
 bool sensors_start() {
     // Start sensor state machine.
     // This state machine is managed in the I2C interupt routine.
+	htim4.Instance->CNT= 0;
+	HAL_TIM_Base_Start(&htim4);
     _sensor_state = REQ_SDP_MEASUREMENT;
 	HAL_I2C_Master_Transmit_IT(_i2c, ADDR_SPD610 , (uint8_t*) _sdp_measurement_req, sizeof(_sdp_measurement_req) );
 	return true;
 }
 
 static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
-    static uint32_t last_sdp_t_ms = 0;
-    static uint32_t last_npa_t_ms = 0;
+    static uint32_t last_sdp_t_us = 0;
+    static uint32_t last_npa_t_us = 0;
 
 	switch (_sensor_state) {
 	case STOPPING:
@@ -117,11 +120,16 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 		if (HAL_I2C_GetError(hi2c) == HAL_I2C_ERROR_NONE) {
 			if( (_npa_measurement_buffer[0]>>6)==0) {
                 uint16_t praw =  (((uint16_t)_npa_measurement_buffer[0]) << 8 | _npa_measurement_buffer[1]) & 0x3FFF;
-				const uint32_t  npa_t_ms = get_time_ms();
-				if(last_npa_t_ms < npa_t_ms + (SAMPLES_T_US/1000)) {
-                	sensors_sample_P(praw); // Pressure (Paw) sensor is assumed to provide responses @ 1kHz
-					last_npa_t_ms = npa_t_ms;
+				const uint16_t npa_t_us = (uint16_t)htim4.Instance->CNT;
+				uint16_t npa_dt_us;
+				if(npa_t_us < last_npa_t_us) {
+					npa_dt_us = ( ((uint32_t) npa_t_us + UINT16_MAX) - last_npa_t_us);
 				}
+				else {
+					npa_dt_us = npa_t_us - last_npa_t_us;
+				}
+				last_npa_t_us = npa_t_us;
+                sensors_sample_P(praw, npa_t_us); // Pressure (Paw) sensor is assumed to provide responses @ 1kHz
             }
             else if((_npa_measurement_buffer[0]>>6)==3) {
 				// TODO: Manage error status !!
@@ -159,17 +167,20 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 			break;
 		}
 		if(_sdp_measurement_buffer[0] != 0xFF || _sdp_measurement_buffer[1] != 0xFF || _sdp_measurement_buffer[2] != 0xFF){
-            const uint32_t  t_ms = get_time_ms();
-			if(last_sdp_t_ms < t_ms+ (SAMPLES_T_US/1000)) {
-				light_yellow(On);
-				const uint32_t dt_ms = t_ms - last_sdp_t_ms;
-				last_sdp_t_ms = t_ms;
-
-				int16_t uncorrected_flow = (int16_t)((((uint16_t)_sdp_measurement_buffer[0]) << 8)
-						| (uint8_t )_sdp_measurement_buffer[1]);
-
-				sensors_sample_flow(uncorrected_flow, dt_ms); // Flow (Pdiff) sensor is assumed to provide responses @ 200Hz
+			const uint16_t sdp_t_us = (uint16_t)htim4.Instance->CNT;
+			uint16_t sdp_dt_us;
+			if(sdp_t_us < last_sdp_t_us) {
+				sdp_dt_us = ( ((uint32_t) sdp_t_us + UINT16_MAX) - last_sdp_t_us);
 			}
+			else {
+				sdp_dt_us = sdp_t_us - last_sdp_t_us;
+			}
+			last_sdp_t_us = sdp_t_us;
+
+			int16_t uncorrected_flow = (int16_t)((((uint16_t)_sdp_measurement_buffer[0]) << 8)
+					| (uint8_t )_sdp_measurement_buffer[1]);
+
+			sensors_sample_flow(uncorrected_flow, sdp_dt_us); // Flow (Pdiff) sensor is assumed to provide responses @ 200Hz
 			_sensor_state= REQ_SDP_MEASUREMENT;
 			HAL_I2C_Master_Transmit_IT(hi2c, ADDR_SPD610, (uint8_t*) _sdp_measurement_req, sizeof(_sdp_measurement_req) );
         }
