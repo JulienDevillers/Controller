@@ -98,9 +98,6 @@ bool motor_stop()
 {
   HAL_TIM_PWM_Stop(_motor_tim, MOTOR_TIM_CHANNEL);
   HAL_TIM_DMABurst_WriteStop(_motor_tim, TIM_DMA_ID_UPDATE);
-  HAL_DMA_Abort(&hdma_tim2_up);
-  HAL_DMA_Abort_IT(&hdma_tim2_up);
-
   _moving=false;
   return true;
 }
@@ -262,11 +259,12 @@ void test_motor()
 		motor_stop();
 		valve_inhale();
 		sensors_start_sampling_flow();
-		nb_steps = motor_press_constant(400, 3000);
-		wait_ms(1000);
+		nb_steps = motor_press_constant(400, 1000);
+		wait_ms(600);
+		valve_exhale();
+		wait_ms(600);
 		sensors_stop_sampling_flow();
 		nb_steps = motor_release();
-		wait_ms(10);
 		while(!_home) {};
 		valve_exhale();
 		print_samples_P(samples_P, samples_P_dt_us, get_samples_P_index_size());
