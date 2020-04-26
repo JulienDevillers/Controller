@@ -259,9 +259,9 @@ void test_motor()
 		valve_inhale();
 		sensors_start_sampling_flow();
 		nb_steps = motor_press_constant(400, 3000);
-		wait_ms(200);
+		wait_ms(600);
 		valve_exhale();
-		wait_ms(200);
+		wait_ms(600);
 
 		sensors_stop_sampling_flow();
 		motor_stop();
